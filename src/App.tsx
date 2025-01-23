@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useId, useCallback } from 'react'
 import { Model } from '../ising_backend/pkg'
 import './App.css'
 
@@ -6,50 +6,61 @@ const SIZE = 1600
 
 function App() {
   const model = useRef<Model | null>(null)
-  const isPlaying = useRef(false)
-  const [fps, setFps] = useState(0)
-  const [mspt, setMspt] = useState(0)
   const lastTickedAt = useRef(0)
 
-  useEffect(() => {
-    reset()
-  }, [])
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [fps, setFps] = useState(0)
+  const [mspt, setMspt] = useState(0)
 
-  const calc = () => {
-    if (isPlaying.current) {
+  useEffect(() => {
+    if (!isPlaying) {
+      return
+    }
+
+    let frameId: number
+
+    const tick = () => {
       const t1 = performance.now()
       model.current?.update_metropolis()
       model.current?.draw()
       const t2 = performance.now()
       setMspt(t2 - t1)
       if (lastTickedAt.current !== 0) {
-        setFps(1000 / (t1 - lastTickedAt.current))
+        const newFps = 1000 / (t1 - lastTickedAt.current)
+        setFps(prev => (prev + newFps) / 2)
       }
       lastTickedAt.current = t1
-      requestAnimationFrame(calc)
+      frameId = requestAnimationFrame(tick)
     }
-  }
 
-  const toggle = () => {
-    isPlaying.current = !isPlaying.current
-    calc()
-  }
+    frameId = requestAnimationFrame(tick)
 
-  const reset = () => {
-    isPlaying.current = false
+    return () => cancelAnimationFrame(frameId)
+  }, [isPlaying])
+
+  const toggle = () => setIsPlaying(prev => !prev)
+
+  const canvasId = useId()
+
+  const reset = useCallback(() => {
+    setIsPlaying(false)
+    setFps(0)
+    setMspt(0)
     model.current?.free()
-    model.current = Model.new(SIZE, 0.44, "lattice")
-  }
+    model.current = Model.new(SIZE, 0.44, canvasId)
+  }, [canvasId])
+
+  useEffect(reset, [reset])
 
   return (
     <>
-      <button type="button" onClick={() => toggle()}>start/stop</button>
-      <button type="button" onClick={() => reset()}>reset</button>
+      <button type="button" onClick={toggle}>{isPlaying ? 'stop' : 'start'}</button>
+      <button type="button" onClick={reset}>reset</button>
       <span>
-        fps: {fps.toPrecision(3)} / mspt: {mspt.toPrecision(3)}
+        fps: {fps.toFixed(2)} / mspt: {mspt.toFixed(2)}
       </span>
       <hr />
-      <canvas id="lattice"></canvas>
+      <canvas id={canvasId}></canvas>
     </>
   )
 }
