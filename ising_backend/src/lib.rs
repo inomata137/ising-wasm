@@ -1,9 +1,4 @@
 #[wasm_bindgen::prelude::wasm_bindgen]
-extern {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen::prelude::wasm_bindgen]
 pub struct Model {
     size: usize,
     spins: Vec<bool>,
@@ -27,7 +22,13 @@ impl Model {
         canvas.set_height(canvas_size);
 
         let context = get_context(canvas);
-        Self { size, spins, beta_j, rng, context }
+        Self {
+            size,
+            spins,
+            beta_j,
+            rng,
+            context,
+        }
     }
 
     fn neightbor_positions(&self, pos: usize) -> [usize; 4] {
@@ -38,7 +39,12 @@ impl Model {
         let right = if x == size - 1 { 0 } else { x + 1 };
         let up = if y == 0 { size - 1 } else { y - 1 };
         let down = if y == size - 1 { 0 } else { y + 1 };
-        [left + y * size, right + y * size, x + up * size, x + down * size]
+        [
+            left + y * size,
+            right + y * size,
+            x + up * size,
+            x + down * size,
+        ]
     }
 
     fn neightbor_spins(&self, pos: usize) -> [bool; 4] {
@@ -49,7 +55,8 @@ impl Model {
         use rand::Rng;
 
         for pos in 0..(self.size * self.size) {
-            let env_spin = self.neightbor_spins(pos)
+            let env_spin = self
+                .neightbor_spins(pos)
                 .iter()
                 .map(|b| if *b { 1. } else { -1. })
                 .sum::<f64>();
@@ -84,9 +91,9 @@ fn get_canvas(id: &str) -> web_sys::HtmlCanvasElement {
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id(id).unwrap();
     canvas
-      .dyn_into::<web_sys::HtmlCanvasElement>()
-      .map_err(|_| ())
-      .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .map_err(|_| ())
+        .unwrap()
 }
 
 fn get_context(canvas: web_sys::HtmlCanvasElement) -> web_sys::CanvasRenderingContext2d {
